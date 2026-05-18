@@ -425,17 +425,10 @@ late_initcall(update_feature);
 static int project_read_func(struct seq_file *s, void *v)
 {
 	void *p = s->private;
-	unsigned int proj = get_project_newcdt();
 
 	switch(Ptr2UINT32(p)) {
 	case PROJECT_VERSION:
-//xiaopan.ji@ODM_WT.BSP.Storage.Sdcard, 2020/07/06, Add for 2027A-2027E project
-		if(proj > 0x20000){
-			seq_printf(s, "%X", proj);
-		}
-		else{
-			seq_printf(s, "%d", proj);
-		}
+		seq_printf(s, "%d", get_project_newcdt());
 		break;
 	case PCB_VERSION:
 		seq_printf(s, "%d", get_PCB_Version_newcdt());
@@ -512,11 +505,6 @@ int oppo_project_init_newcdt(void)
 	}
 
 	p_entry = proc_create_data("prjName", S_IRUGO, oppo_info, &project_info_fops, UINT2Ptr(PROJECT_VERSION));
-	if (!p_entry)
-		goto error_init;
-
-	/* hushan.sun@Cam.Drv, 20200724,modify for camera preivew will freezen */
-	p_entry = proc_create_data("prjVersion", S_IRUGO, oppo_info, &project_info_fops, UINT2Ptr(PROJECT_VERSION));
 	if (!p_entry)
 		goto error_init;
 

@@ -71,13 +71,13 @@ static bool ohm_action_ctrl = false;
 void ohm_action_trig(int type)
 {
         if (!ohm_action_ctrl) {
-                ohm_err_deferred("ctrl off\n");
+                ohm_err("ctrl off\n");
                 return;
         }
         ohm_debug("%s trig action\n", sched_list[type]);
         if (OHM_MEM_MON == type || OHM_SCHED_FSYNC == type) {
                 if (!ohm_kobj) {
-                        ohm_err_deferred("kobj NULL\n");
+                        ohm_err("kobj NULL\n");
                         return;
                 }
                 sprintf(ohm_detect_env[1], "OHMTYPE=%s", sched_list[type]);
@@ -142,7 +142,7 @@ void ohm_schedstats_record(int sched_type, int fg, u64 delta_ms)
                 oppo_sched_para[sched_type].high_cnt++;
 
                 if (oppo_sched_para[sched_type].logon  && __ratelimit(&ratelimit)) {
-                        ohm_debug("[%s / %s] high_cnt, delay = %llu ms\n",
+                        ohm_debug_deferred("[%s / %s] high_cnt, delay = %llu ms\n",
                                 sched_list[sched_type], (fg ? "fg":"bg"), delta_ms);
                 }
                 if (fg) {
@@ -502,7 +502,7 @@ static const struct file_operations proc_fsync_wait_fops = {
 
 /****** emcdrv_iowait stat  ******/
 /* Emmc - 1 ; Ufs - 2 */
-int ohm_flash_type = OHM_FLASH_TYPE_EMC;
+int ohm_flash_type = OHM_FLASH_TYPE_UFS;
 static ssize_t emmcio_read(struct file *filp, char __user *buff, size_t count, loff_t *off)
 {
         char page[1024] = {0};

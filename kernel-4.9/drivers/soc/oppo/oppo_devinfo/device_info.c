@@ -26,6 +26,11 @@
 #include <asm/uaccess.h>
 #include <linux/delay.h>
 
+#ifdef ODM_WT_EDIT
+/*xu.chen@ODM_WT.BSP.Kernel.Boot, 2020/06/12, Add for S98639 subID match*/
+#include <linux/hardware_info.h>
+#endif /* ODM_WT_EDIT */
+
 #define DEVINFO_NAME "devinfo"
 #define INFO_BUF_LEN 64
 /**for definfo log**/
@@ -61,14 +66,10 @@ struct devinfo_data {
 	int sub_hw_id2;
 	int main_hw_id5;
 	int main_hw_id6;
-	int hw_sim2_det;
 	struct pinctrl_state *hw_sub_id_sleep;
 	struct pinctrl_state *hw_sub_id_active;
 	struct pinctrl_state *hw_main_id5_active;
 	struct pinctrl_state *hw_main_id6_active;
-	struct pinctrl_state *hw_sim2_pullH;
-	struct pinctrl_state *hw_sim2_pullL;
-	struct pinctrl_state *hw_sim2_Npull;
 	int ant_select_gpio;
 	struct manufacture_info sub_mainboard_info;
 };
@@ -247,14 +248,12 @@ static int subboard_init(struct devinfo_data *const devinfo_data) {
 		DEVINFO_ERR("devinfo_data->sub_hw_id1 not specified\n");
 		return -1;
 	}
-/*chaibin@ODM_WT.BSP.Kernel.Boot, 2020/07/07, Add for devinfo*/
-#ifndef ODM_WT_EDIT
+
 	devinfo_data->sub_hw_id2 = of_get_named_gpio(np, "Hw,sub_hwid_2", 0);
 	if(devinfo_data->sub_hw_id2 < 0 ) {
 		DEVINFO_ERR("devinfo_data->sub_hw_id2 not specified\n");
 		return -1;
 	}
-#endif /* ODM_WT_EDIT*/
 
 	devinfo_data->pinctrl = devm_pinctrl_get(&devinfo_data->devinfo->dev);
 	if (IS_ERR_OR_NULL(devinfo_data->pinctrl)) {
@@ -304,7 +303,7 @@ static int subboard_init(struct devinfo_data *const devinfo_data) {
 * after get the state of the pins, set to pin state to pull down.
 */
 #ifndef ODM_WT_EDIT
-/*chaibin@ODM_WT.BSP.Kernel.Boot, 2020/07/07, Add for devinfo*/
+/*Haibo.Dong@ODM_WT.BSP.Kernel.Boot, 2020/04/02, Add for devinfo*/
 static int subboard_verify(struct devinfo_data *const devinfo_data)
 {
 	int ret = 0;
@@ -470,72 +469,62 @@ static int subboard_verify(struct devinfo_data *const devinfo_data)
 	return ret;
 }
 #else
+
+#ifdef ODM_WT_EDIT
+/*xu.chen@ODM_WT.BSP.Kernel.Boot, 2020/07/7, Add for 98639 subID match*/
+int ispascal_e()
+{
+	int operator=0;
+	operator = get_Operator_Version();
+	if( operator==136 || operator==137 || operator==138 || operator==139 || operator==140)
+		return 1;
+	else
+		return 0;
+}
+#endif /* ODM_WT_EDIT */
+
 static int subboard_verify(struct devinfo_data *const devinfo_data)
 {
 	int ret = -1;
 	int sub_gpio = -1;
-
+	int main_gpio = -1;
 	DEVINFO_MSG("Enter\n");
-	if (IS_ERR_OR_NULL(devinfo_data))
-	{
+	if(IS_ERR_OR_NULL(devinfo_data)){
 		DEVINFO_ERR("devinfo_data is NULL\n");
 		return -1;
 	}
 
-	if (devinfo_data->sub_hw_id1 >= 0)
-	{
-		ret = pinctrl_select_state(devinfo_data->pinctrl, devinfo_data->hw_sub_id_active);
-		if (ret < 0)
-		{
+	if((devinfo_data->sub_hw_id1 >= 0) && (devinfo_data->sub_hw_id2 >= 0)) {
+		ret = pinctrl_select_state(devinfo_data->pinctrl,devinfo_data->hw_sub_id_active);
+		if (ret < 0) {
 			DEVINFO_ERR("set sub id1 active failed\n");
 			return -1;
 		}
 		msleep(2);
 		sub_gpio = gpio_get_value(devinfo_data->sub_hw_id1);
-		DEVINFO_ERR("sub_gpio(%d) = %d\n", devinfo_data->sub_hw_id1, sub_gpio);
-
-		switch (get_project())
-		{
-		case OPPO_20091:
-		case OPPO_20273:
-		case OPPO_20274:
-		case OPPO_2027C:
-		case OPPO_2027D:
-			if (1 == sub_gpio)
-			{
-				snprintf(devinfo_data->sub_mainboard_info.manufacture, INFO_BUF_LEN, "rf-match");
+		main_gpio = gpio_get_value(devinfo_data->sub_hw_id2);
+		DEVINFO_ERR("sub_gpio(%d) = %d main_gpio(%d) = %d\n", devinfo_data->sub_hw_id1, sub_gpio, devinfo_data->sub_hw_id2, main_gpio);
+#ifdef ODM_WT_EDIT
+/*xu.chen@ODM_WT.BSP.Kernel.Boot, 2020/06/12, Add for 98639 subID match*/
+		if(ispascal_e()){
+			if (sub_gpio==1 && main_gpio==0) {
+				snprintf(devinfo_data->sub_mainboard_info.manufacture, INFO_BUF_LEN, "-match");
+			} else {
+				snprintf(devinfo_data->sub_mainboard_info.manufacture, INFO_BUF_LEN, "-unmatch");
+				}
+		}else{
+			if (sub_gpio == main_gpio) {
+				snprintf(devinfo_data->sub_mainboard_info.manufacture, INFO_BUF_LEN, "-match");
+			} else {
+				snprintf(devinfo_data->sub_mainboard_info.manufacture, INFO_BUF_LEN, "-unmatch");
 			}
-			else
-			{
-				snprintf(devinfo_data->sub_mainboard_info.manufacture, INFO_BUF_LEN, "rf-unmatch");
-			}
-			break;
-		case OPPO_20271:
-		case OPPO_20272:
-		case OPPO_2027A:
-		case OPPO_2027B:
-		case OPPO_2027E:
-			if (0 == sub_gpio)
-			{
-				snprintf(devinfo_data->sub_mainboard_info.manufacture, INFO_BUF_LEN, "rf-match");
-			}
-			else
-			{
-				snprintf(devinfo_data->sub_mainboard_info.manufacture, INFO_BUF_LEN, "rf-unmatch");
-			}
-			break;
-		default:
-			DEVINFO_ERR("illegal project\n");
-			break;
 		}
-		ret = pinctrl_select_state(devinfo_data->pinctrl, devinfo_data->hw_sub_id_sleep);
-		if (ret < 0)
-		{
+#endif /* ODM_WT_EDIT */
+		ret = pinctrl_select_state(devinfo_data->pinctrl,devinfo_data->hw_sub_id_sleep);
+		if (ret < 0) {
 			DEVINFO_ERR("set sub id1 sleep failed\n");
 		}
-	}
-	else
-	{
+	} else {
 		DEVINFO_ERR("get sub main id failed\n");
 	}
 
@@ -592,151 +581,6 @@ static void recursive_fork_para_monitor(void)
         }
 }
 
-#ifdef ODM_WT_EDIT
-/* chaibin@ODM_WT.BSP.Storage.sim, 2020/07/08, Detect sim2 presence */
-#define STATU_PULLLOW 0
-#define STATU_PULLHIGH 1
-#define STATU_NOPULL 2
-
-static int value_sim2_det_is_high = -1;
-
-static int sim_det2_gpio_show(struct seq_file *m, void *v)
-{
-    int sim_det2_value = 0;
-
-    if (0 == value_sim2_det_is_high) {
-        sim_det2_value = STATU_PULLLOW;
-        pr_notice("sim_det2_value:%d,Single sim card\n");
-    } else if (1 == value_sim2_det_is_high) {
-        sim_det2_value = STATU_PULLHIGH;
-        pr_notice("sim_det2_value:%d,Dual sim card\n");
-    } else {
-        sim_det2_value = STATU_NOPULL;
-        pr_notice("sim_det2_value:%d,neet echo 1 > sim2_det\n");
-    }
-    value_sim2_det_is_high = -1;
-    seq_printf(m, "%d\n", sim_det2_value);
-
-    return 0;
-}
-
-static void set_sim2_gpio_statu(int status)
-{
-    if (STATU_PULLLOW == status) {
-        pinctrl_select_state(dev_info->pinctrl, dev_info->hw_sim2_pullL);
-    } else if (STATU_PULLHIGH == status) {
-        pinctrl_select_state(dev_info->pinctrl, dev_info->hw_sim2_pullH);
-    } else if (STATU_NOPULL == status) {
-        pinctrl_select_state(dev_info->pinctrl, dev_info->hw_sim2_Npull);
-    }
-}
-
-static ssize_t sim_det2_proc_write(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
-{
-    char *buf = NULL;
-
-    if (count > 2)
-        count = 2;
-
-    buf = kmalloc(sizeof(char) * (count + 1), GFP_KERNEL);
-    if (!buf)
-        return -ENOMEM;
-
-    if (copy_from_user(buf, buffer, count))
-    {
-        kfree(buf);
-        return -EFAULT;
-    }
-
-    buf[count] = '\0';
-
-    if (!strcmp(buf, "1"))
-    {
-
-        value_sim2_det_is_high = -1;
-
-        set_sim2_gpio_statu(STATU_PULLHIGH);
-        msleep(2);
-        value_sim2_det_is_high = gpio_get_value(dev_info->hw_sim2_det);
-        pr_notice("value_sim2_det_is_high:%d\n", value_sim2_det_is_high);
-
-        set_sim2_gpio_statu(STATU_NOPULL);
-    }
-    else
-    {
-        pr_err("SET sim2_det error:%s.\n", buf);
-    }
-
-    kfree(buf);
-
-    return count;
-}
-static int sim_det2_proc_open(struct inode *inode, struct file *file)
-{
-    return single_open(file, sim_det2_gpio_show, NULL);
-}
-
-static const struct file_operations sim2_det_fops = {
-    .open = sim_det2_proc_open,
-    .read = seq_read,
-    .write = sim_det2_proc_write,
-    .llseek = seq_lseek,
-    .release = single_release,
-};
-
-static int sim2_det_init(struct devinfo_data *const devinfo_data)
-{
-    struct proc_dir_entry *pentry;
-    int ret = 0;
-    struct device_node *np = NULL;
-
-    np = devinfo_data->devinfo->dev.of_node;
-
-    devinfo_data->hw_sim2_det = of_get_named_gpio(np, "Hw,sim2_det", 0);
-    if (devinfo_data->hw_sim2_det < 0)
-    {
-        DEVINFO_ERR("devinfo_data->hw_sim2_det not specified\n");
-        return -1;
-    }
-
-    gpio_request(devinfo_data->hw_sim2_det, "sim2_det");
-    if (ret)
-    {
-        DEVINFO_ERR("unable to request gpio [%d]\n", devinfo_data->hw_sim2_det);
-        return ret;
-    }
-
-    devinfo_data->hw_sim2_pullH = pinctrl_lookup_state(devinfo_data->pinctrl, "sim2_det_pullhigh");
-    if (IS_ERR_OR_NULL(devinfo_data->hw_sim2_pullH))
-    {
-        DEVINFO_ERR("Failed to get the sim2 pull HIGH statu\n");
-        return -1;
-    }
-
-    devinfo_data->hw_sim2_pullL = pinctrl_lookup_state(devinfo_data->pinctrl, "sim2_det_pulllow");
-    if (IS_ERR_OR_NULL(devinfo_data->hw_sim2_pullL))
-    {
-        DEVINFO_ERR("Failed to get the sim2 pull LOW statu\n");
-        return -1;
-    }
-
-    devinfo_data->hw_sim2_Npull = pinctrl_lookup_state(devinfo_data->pinctrl, "sim2_det_nopull");
-    if (IS_ERR_OR_NULL(devinfo_data->hw_sim2_Npull))
-    {
-        DEVINFO_ERR("Failed to get the sim2 Nopull statu\n");
-        return -1;
-    }
-
-    pentry = proc_create("sim2_det", 0666, NULL, &sim2_det_fops);
-    if (!pentry)
-    {
-        pr_err("create /devinfo/sim2_det proc failed.\n");
-        return -1;
-    }
-    return 0;
-}
-#endif /*ODM_WT_EDIT*/
-
 static void init_proc_devinfo_modify(void){
 	struct proc_dir_entry *p = NULL;
 	p = proc_create("devinfo_modify", S_IWUSR | S_IWGRP | S_IWOTH, NULL, &devinfo_modify_fops);
@@ -785,10 +629,6 @@ static int devinfo_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		DEVINFO_ERR("register mainboard failed\n");
 	}
-#ifdef ODM_WT_EDIT
-/* chaibin@ODM_WT.BSP.Storage.sim, 2020/07/08, Detect sim2 presence */
-	sim2_det_init(devinfo_data);
-#endif /*ODM_WT_EDIT*/
 	recursive_fork_para_monitor();
 	init_proc_devinfo_modify();
 	return ret;

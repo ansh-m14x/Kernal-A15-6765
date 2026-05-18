@@ -55,6 +55,7 @@ unsigned int get_PCB_Version(void)
 		return get_PCB_Version_oldcdt();
 	}
 }
+EXPORT_SYMBOL(get_PCB_Version);
 
 unsigned int get_Modem_Version(void)
 {
