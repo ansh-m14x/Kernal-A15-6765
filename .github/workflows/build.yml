@@ -28,10 +28,12 @@ jobs:
 
     - name: Download Toolchains
       run: |
-        mkdir -p tools
+        mkdir -p tools/clang
         
-        echo "==> Cloning Clang 6.0.2... <=="
-        git clone https://github.com/KAGA-KOKO/clang-6.0.2 -b clang --depth=1 tools/clang
+        echo "==> Downloading and extracting AOSP Clang 11.0.5 (r399163b)... <=="
+        wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/19b9347eeff21da190299d725e5d792b20216dfe/clang-r399163b.tar.gz -O clang.tar.gz
+        tar -xzf clang.tar.gz -C tools/clang
+        rm clang.tar.gz
         
         echo "==> Cloning GCC 64-bit... <=="
         git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b ndk-release-r16 --depth=1 tools/gcc64
@@ -58,13 +60,15 @@ jobs:
         echo "==> Configuring with oppo6765_defconfig <=="
         make O=out ARCH=arm64 CC=clang HOSTCC=clang DTC=dtc \
           CLANG_TRIPLE=aarch64-linux-gnu- \
-          CROSS_COMPILE=aarch64-linux-androidkernel- \
+          CROSS_COMPILE=aarch64-linux-android- \
+          CROSS_COMPILE_ARM32=arm-linux-androideabi- \
           oppo6765_defconfig
         
         echo "==> Starting Kernel Compilation <=="
         make -j${PROCS} O=out ARCH=arm64 CC=clang HOSTCC=clang DTC=dtc \
           CLANG_TRIPLE=aarch64-linux-gnu- \
-          CROSS_COMPILE=aarch64-linux-androidkernel-
+          CROSS_COMPILE=aarch64-linux-android- \
+          CROSS_COMPILE_ARM32=arm-linux-androideabi-
 
     - name: Check for Kernel Output
       run: |
@@ -85,5 +89,5 @@ jobs:
     - name: Upload Kernel Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Oppo-A15-Kernel-CustomClang
+        name: Oppo-A15-Kernel-Clang11
         path: output/*
