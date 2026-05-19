@@ -15,7 +15,7 @@ obj-y   +=  tpd_setting.o
 obj-y   += tp_usb_notifier.o
 obj-y   += update_tpfw_notifier.o
 obj-y   += headset_notifier.o
-obj-$(CONFIG_TOUCHSCREEN_HIMAX_CHIPSET)	+= hxchipset/
+# obj-$(CONFIG_TOUCHSCREEN_HIMAX_CHIPSET)	+= hxchipset/
 obj-$(CONFIG_TOUCHSCREEN_ILI9881H)	 += ili9881h/
 obj-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI)	 += NT36525B/
 #endif
