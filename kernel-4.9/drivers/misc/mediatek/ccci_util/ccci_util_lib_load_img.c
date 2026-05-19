@@ -184,14 +184,28 @@ static int check_md_header_v3(int md_id, void *parse_addr,
 				&& (head->image_type >= modem_ultg)
 				&& (head->image_type <= MAX_IMG_NUM))
 				curr_ubin_id = head->image_type;
-			image->ap_info.image_type = type_str[head->image_type];
+
+			/* Safe boundary check for type_str array indexing */
+			if (head->image_type < sizeof(type_str)/sizeof(type_str[0]) && type_str[head->image_type]) {
+				image->ap_info.image_type = type_str[head->image_type];
+				image->img_info.image_type = type_str[head->image_type];
+			} else {
+				image->ap_info.image_type = "invalid";
+				image->img_info.image_type = "invalid";
+			}
+
 			image->ap_info.platform = ccci_get_ap_platform();
-			image->img_info.image_type = type_str[head->image_type];
 			image->img_info.platform = head->platform;
 			image->img_info.build_time = head->build_time;
 			image->img_info.build_ver = head->build_ver;
-			image->img_info.product_ver =
-				product_str[head->product_ver];
+
+			/* Safe boundary check for product_str array indexing */
+			if (head->product_ver < sizeof(product_str)/sizeof(product_str[0]) && product_str[head->product_ver]) {
+				image->img_info.product_ver = product_str[head->product_ver];
+			} else {
+				image->img_info.product_ver = "invalid";
+			}
+
 			image->img_info.version = head->product_ver;
 			image->img_info.header_verno = head->header_verno;
 
@@ -461,13 +475,28 @@ static int md_check_header_parser(int md_id, void *parse_addr,
 			&& (head->image_type >= modem_ultg)
 			&& (head->image_type <= MAX_IMG_NUM))
 			curr_ubin_id = head->image_type;
-		image->ap_info.image_type = type_str[head->image_type];
+
+		/* Safe boundary check for type_str array indexing */
+		if (head->image_type < sizeof(type_str)/sizeof(type_str[0]) && type_str[head->image_type]) {
+			image->ap_info.image_type = type_str[head->image_type];
+			image->img_info.image_type = type_str[head->image_type];
+		} else {
+			image->ap_info.image_type = "invalid";
+			image->img_info.image_type = "invalid";
+		}
+
 		image->ap_info.platform = ccci_get_ap_platform();
-		image->img_info.image_type = type_str[head->image_type];
 		image->img_info.platform = head->platform;
 		image->img_info.build_time = head->build_time;
 		image->img_info.build_ver = head->build_ver;
-		image->img_info.product_ver = product_str[head->product_ver];
+
+		/* Safe boundary check for product_str array indexing */
+		if (head->product_ver < sizeof(product_str)/sizeof(product_str[0]) && product_str[head->product_ver]) {
+			image->img_info.product_ver = product_str[head->product_ver];
+		} else {
+			image->img_info.product_ver = "invalid";
+		}
+
 		image->img_info.version = head->product_ver;
 		image->img_info.header_verno = head->header_verno;
 
@@ -730,14 +759,27 @@ static int check_md_header(int md_id, void *parse_addr,
 			md_size_check = true;
 #endif
 
-			image->ap_info.image_type = type_str[head->image_type];
+			/* Safe boundary check for type_str array indexing */
+			if (head->image_type < sizeof(type_str)/sizeof(type_str[0]) && type_str[head->image_type]) {
+				image->ap_info.image_type = type_str[head->image_type];
+				image->img_info.image_type = type_str[head->image_type];
+			} else {
+				image->ap_info.image_type = "invalid";
+				image->img_info.image_type = "invalid";
+			}
+
 			image->ap_info.platform = ccci_get_ap_platform();
-			image->img_info.image_type = type_str[head->image_type];
 			image->img_info.platform = head->platform;
 			image->img_info.build_time = head->build_time;
 			image->img_info.build_ver = head->build_ver;
-			image->img_info.product_ver =
-				product_str[head->product_ver];
+
+			/* Safe boundary check for product_str array indexing */
+			if (head->product_ver < sizeof(product_str)/sizeof(product_str[0]) && product_str[head->product_ver]) {
+				image->img_info.product_ver = product_str[head->product_ver];
+			} else {
+				image->img_info.product_ver = "invalid";
+			}
+
 			image->img_info.version = head->product_ver;
 
 			if (md_type_check && md_plat_check
@@ -834,10 +876,12 @@ void get_md_postfix(int md_id, char k[], char buf[], char buf_ex[])
 	/* X */
 	X = md_id + 1;
 
+	/* Added protective validation boundary around type_str check mapping */
 	if ((curr_ubin_id != 0) && (md_id == MD_SYS1)) {
+		char *ubin_str = (curr_ubin_id < sizeof(type_str)/sizeof(type_str[0]) && type_str[curr_ubin_id]) ? type_str[curr_ubin_id] : "invalid";
 		if (buf) {
 			snprintf(buf, IMG_POSTFIX_LEN,
-				"%d_%s_n", X, type_str[curr_ubin_id]);
+				"%d_%s_n", X, ubin_str);
 			CCCI_UTIL_ERR_MSG_WITH_ID(md_id,
 				"MD%d image postfix=%s\n",
 				md_id + 1, buf);
@@ -846,7 +890,7 @@ void get_md_postfix(int md_id, char k[], char buf[], char buf_ex[])
 		if (buf_ex) {
 			snprintf(buf_ex, IMG_POSTFIX_LEN,
 				"%d_%s_n_E%d", X,
-				type_str[curr_ubin_id], Ex);
+				ubin_str, Ex);
 			CCCI_UTIL_ERR_MSG_WITH_ID(md_id,
 				"MD%d image postfix=%s\n",
 				md_id + 1, buf_ex);
@@ -881,13 +925,16 @@ void get_md_postfix(int md_id, char k[], char buf[], char buf_ex[])
 		feature_val = md_type_invalid;
 	}
 
+	/* Added protective validation fallback string pointer mapping */
+	char *f_type_str = (feature_val < sizeof(type_str)/sizeof(type_str[0]) && type_str[feature_val]) ? type_str[feature_val] : "invalid";
+
 	/* K */
 	if (k == NULL)
 		snprintf(YY_K, IMG_POSTFIX_LEN,
-			"_%s_n", type_str[feature_val]);
+			"_%s_n", f_type_str);
 	else
 		snprintf(YY_K, IMG_POSTFIX_LEN,
-			"_%s_%s", type_str[feature_val], k);
+			"_%s_%s", f_type_str, k);
 
 	/* [_Ex] Get chip version */
 #if 0
@@ -945,14 +992,14 @@ int ccci_load_firmware(int md_id, void *img_inf,
 		ret = -CCCI_ERR_LOAD_IMG_FILE_OPEN;
 		goto out;
 	}
-	/*  Gen file name */
+	/* Gen file name */
 	get_md_postfix(md_id, NULL, post_fix, NULL);
 
-	/*  Gen MD image name */
+	/* Gen MD image name */
 	if (img->type == IMG_MD) {
 		snprintf(img_name, IMG_NAME_LEN,
 			"modem_%s.img", post_fix);
-	/*  Gen DSP image name */
+	/* Gen DSP image name */
 	} else if (img->type == IMG_DSP) {
 		snprintf(img_name, IMG_NAME_LEN,
 			"dsp_%s.bin", post_fix);
@@ -990,18 +1037,20 @@ TRY_LOAD_IMG:
 		 */
 		if (i <= scan_max) {
 			CCCI_UTIL_INF_MSG_WITH_ID(md_id, "Curr i:%d\n", i);
+			/* Added type boundaries wrap check lookup fallback */
+			char *i_type_str = (i < sizeof(type_str)/sizeof(type_str[0]) && type_str[i]) ? type_str[i] : "invalid";
 			if (img->type == IMG_MD)
 				snprintf(img_name, IMG_NAME_LEN,
 					"modem_%d_%s_n.img",
-					md_id+1, type_str[i]);
+					md_id+1, i_type_str);
 			else if (img->type == IMG_DSP)
 				snprintf(img_name, IMG_NAME_LEN,
 					"dsp_%d_%s_n.bin",
-					md_id+1, type_str[i]);
+					md_id+1, i_type_str);
 			else if (img->type == IMG_ARMV7)
 				snprintf(img_name, IMG_NAME_LEN,
 					"armv7_%d_%s_n.bin",
-					md_id+1, type_str[i]);
+					md_id+1, i_type_str);
 			else {
 				CCCI_UTIL_ERR_MSG_WITH_ID(md_id,
 					"[Error]Invalid img type%d\n",
@@ -1289,4 +1338,3 @@ int check_if_bypass_header(void *buf, int *img_size)
 	CCCI_UTIL_ERR_MSG("This image does not find header, no need bypass\n");
 	return 0;
 }
-
