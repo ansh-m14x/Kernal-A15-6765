@@ -256,6 +256,7 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 ARCH		?= $(SUBARCH)
 CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
+CROSS_COMPILE_ARM32	?= $(CONFIG_CROSS_COMPILE_ARM32:"%"=%)
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -391,9 +392,9 @@ LINUXINCLUDE	+= $(filter-out $(LINUXINCLUDE),$(USERINCLUDE))
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common -fshort-wchar \
-		   -Werror-implicit-function-declaration \
-		   -Wno-format-security \
-		   -std=gnu89 $(call cc-option,-fcommon,)
+		   -Werror-implicit-function-declaration -w\
+		   -Wno-format-security -Wno-error=format\
+		   -std=gnu89
 KBUILD_CPPFLAGS := -D__KERNEL__
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
@@ -444,6 +445,13 @@ KBUILD_CPPFLAGS += -DMOUNT_EXSTORAGE_IF
 CFLAGS_KERNEL += -DMOUNT_EXSTORAGE_IF
 CFLAGS_MODULE += -DMOUNT_EXSTORAGE_IF
 #endif /* VENDOR_EDIT */
+
+#ifdef VENDOR_EDIT
+#Ke.Li@ROM, Security, 2019-12-9, bypass exec and remount security feature in DEV version
+ifeq ($(OBSOLETE_KEEP_ADB_SECURE),1)
+KBUILD_CFLAGS += -DOPPO_DISALLOW_KEY_INTERFACES
+endif
+#endif
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
@@ -1636,7 +1644,7 @@ else # KBUILD_EXTMOD
 # in the basis kernel ordinary make commands (without M=...) must
 # be used.
 #
-# the following are the only valid targets when building external
+# The following are the only valid targets when building external
 # modules.
 # make M=dir clean     Delete all automatically generated files
 # make M=dir modules   Make all modules in specified dir
